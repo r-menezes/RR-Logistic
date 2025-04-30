@@ -1,0 +1,12 @@
+name: rr-logistic
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy=2.1
+  - pandas=2.2
+  - scipy=1.15
+  - matplotlib=3.10
+  - seaborn=0.13
+  - palettable=3.3
+  - pyarrow # Required by pandas for reading/writing parquet files
