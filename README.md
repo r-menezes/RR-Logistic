@@ -1,6 +1,12 @@
 # Range-Resident Logistic Model
 
-## Authorship and Resources
+
+[![DOI](https://zenodo.org/badge/975705705.svg)](https://doi.org/10.5281/zenodo.15312822)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![bioRxiv](https://img.shields.io/badge/bioRxiv-2025.02.09.637279-blue)](https://doi.org/10.1101/2025.02.09.637279)
+
+
+## Authorship
 
 **Authors:**
 - Rafael Menezes (maintainer) $^{1,2,3}$
@@ -17,11 +23,7 @@ $^{3}$ Department of Ecology, Institute of Biosciences, University of São Paulo
 $^{4}$ Department of Ecological Modelling, Helmholtz Centre for Environmental Research – UFZ, Leipzig, Germany.
 $^{5}$ Department of Biology, University of Maryland, College Park, MD, USA.
 
-
-**Resources:**  
-- DOI of the accompanying paper: [TBD](https://doi.org/tbd)  
-- Zenodo archive for datasets and code: [10.5281/zenodo.TBD](https://doi.org/10.5281/zenodo.example)
-- GitHub repository: [github: r-menezes/rr-logistic](https://github.com/r-menezes/rr-logistic)
+---
 
 This repository contains the implementation of the range-resident logistic model, algonside helper code to run the simulations and reproduce the analyses presented in the accompanying paper.
 
@@ -103,9 +105,9 @@ The documentation for the `experiment_planner` is available in the source code. 
 ```json
 {
     "parameter_levels": {
-        "tau": [1.0e-06, ... , 1.0e+00],
+        "tau": [1.0e-06, "..." , 1.0e+00],
         "noise": [],
-        "hr_stdev": [0.001, ... , 1.0],
+        "hr_stdev": [0.001, "..." , 1.0],
         "dispersal": [1.0e-03, 1.0e-02, 1.0e-01],
         "comp_kernel": [1.0e-03, 1.0e-02, 1.0e-01],
         "env_size": [1.0],
@@ -128,7 +130,7 @@ The documentation for the `experiment_planner` is available in the source code. 
         "BM": ["noise", "dispersal"],
         "SS": ["dispersal"]
     },
-    "common_parameters": ["n_org", ... ,"output_format"],
+    "common_parameters": ["n_org", "..." ,"output_format"],
     "generate_seeds": true,
     "n_reps": 20,
     "id": "seed",
@@ -153,7 +155,7 @@ This will generate parameter files (e.g., `exp_parameters.json`) containing the 
 Execute the simulations using the generated parameter files. Run the `run_experiments.py` script with the `-r` flag for each parameter file.
 
 ```bash
-python run_experiments.py -r -i params/exp_parameters.json
+python run_experiments.py -r -i exp_parameters.json
 ```
 *Note: Although individual simulations are usually computationally inexpensive, running a large number of them might require significant computational resources. The script is designed to run simulations in parallel, utilizing all available CPU cores by default. Using HPC facilities for the simulations is recommended.*
 
@@ -174,12 +176,24 @@ This work was financed, in part, by the São Paulo Research Foundation (FAPESP),
 
 ## License
 
-This code is licensed under the
+This code is licensed under the MIT License
+
+Copyright (c) 2025 Rafael Menezes
 
 ## Citation
 
 If you use this code in your research, please cite the accompanying paper. The citation format is as follows:
 
 ```bibtex
-@article{TBD}
+@misc{menezes_range-resident_2025,
+    title = {The range-resident logistic model: a new framework to formalize the population-dynamics consequences of range residency},
+    shorttitle = {The range-resident logistic model},
+    url = {https://www.biorxiv.org/content/10.1101/2025.02.09.637279v1},
+    doi = {10.1101/2025.02.09.637279},
+    language = {en},
+    urldate = {2025-04-30},
+    publisher = {bioRxiv},
+    author = {Menezes, Rafael and Calabrese, Justin M. and Fagan, William F. and Prado, Paulo Inácio and Martinez-Garcia, Ricardo},
+    year = {2025},
+}
 ```
