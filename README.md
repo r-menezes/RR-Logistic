@@ -91,6 +91,8 @@ To use different datasets or customize the output directory, you can specify the
 python generate_figs.py [-h] [--tex] [fig2_dataset] [figs34_dataset] [output]
 ```
 
+Note that the supplementary figures order is not the same as in the paper.
+
 
 ## Reproducing the Analyses
 

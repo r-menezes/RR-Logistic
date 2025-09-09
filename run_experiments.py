@@ -66,17 +66,10 @@ def run_habitat(
     tau=None,
     noise=None,
     mover_class=OU_Mover,
-    default=False,
     max_abundance=np.inf,
     **kwargs
     ):
     from uuid import uuid4
-
-    # Default parameters
-    if default:
-        tau = 1e-3
-        hr_stdev = 1e-2
-        steps = int(5e4)
 
     # select steps or time integration
     if (steps is None) and (time is None):
@@ -154,7 +147,6 @@ def run_habitat(
     gamma = kwargs.get(
         "comp_rate", 0.02
     )  # float  # competition rate between roaming organisms
-    gamma = gamma / (env_size*env_size)
 
     # # Movement
     mover_class = mover_class  #: Mover
@@ -163,9 +155,23 @@ def run_habitat(
 
     # # Dispersal functions
     dispersal = kwargs.get("dispersal", 0.1)  #: FunctionType | float
+    if isinstance(dispersal, str):
+        # if dispersal is a string, split it by _
+        try:
+            _disp, _shape, _scale = dispersal.split("_")
+            if _disp == "gamma":
+                from RR_logistic import gamma_dispersal
+                dispersal = lambda pos, habitat: gamma_dispersal(
+                    pos, habitat, shape=float(_shape), stdev=float(_scale)
+                )
+        except:
+            print("I was expecting a string in the format 'gamma_shape_scale', but got:", dispersal)
+            print("reverting to gaussian dispersal with stdev=0.1")
+            dispersal = 0.1
+            pass
 
     # Initial populations
-    n_org = kwargs.get("n_org", int(round((b - d) / gamma)))  #: int
+    n_org = kwargs.get("n_org", int(env_size*env_size*round((b - d) / gamma)))  #: int
     centers = kwargs.get("centers", "random")  #: np.ndarray | str = "random"
 
     # # Data variables
@@ -185,10 +191,9 @@ def run_habitat(
     no_rate_delta_t = kwargs.get("no_rate_delta_t", 1e-2)  #: float = 1e-2
     extra_data = kwargs.get("extra_data", {})  #: dict = field(default_factory=dict)
     temporal_averages = kwargs.get("temporal_averages", None)
-    return_temporal_data = kwargs.get("return_temporal_data", False)  #: bool = False
-    return_positions = kwargs.get("return_positions", False)  #: bool = False
     save_temporal_data = kwargs.get("save_temporal_data", True)  #: bool = False
     save_positions = kwargs.get("save_positions", True)  #: bool = False
+    save_aggregates = kwargs.get("save_aggregates", True)  #: bool = True
     save_output = kwargs.get("save_output", True)  #: bool = False
     output_format = kwargs.get("output_format", "parquet")  #: str = "json"
     extra_data_on_exit = kwargs.get(
@@ -208,8 +213,20 @@ def run_habitat(
 
     from RR_logistic import hr_centers_crowding, org_pos_crowding
 
-    extra_data = {"hr_crowd": hr_centers_crowding, "pos_crowd": org_pos_crowding}
-    temporal_averages = ["hr_crowd", "pos_crowd"]
+    extra_data = {"pos_crowd": org_pos_crowding}
+    temporal_averages = ["pos_crowd"]
+    if mover_class == OU_Mover or mover_class == "OU":
+        extra_data = extra_data | {
+            "hr_crowd": hr_centers_crowding
+        }
+        temporal_averages.append("hr_crowd")
+    else:
+        extra_data = extra_data | {
+            "hr_crowd": lambda habitat: np.nan
+        }
+        temporal_averages.append("hr_crowd")
+
+    output_format = "parquet"
 
     habitat = Habitat(
         n_org=n_org,
@@ -231,10 +248,9 @@ def run_habitat(
         centers=centers,
         rng=rng,
         extra_data=extra_data,
-        return_temporal_data=return_temporal_data,
-        return_positions=return_positions,
         save_temporal_data=save_temporal_data,
         save_positions=save_positions,
+        save_aggregates=save_aggregates,
         save_output=save_output,
         output_format=output_format,
         extra_data_on_exit=extra_data_on_exit,
@@ -409,7 +425,7 @@ def experiment_planner(
             for idx, exp in enumerate(experiments):
                 experiments[idx] = exp | {"id": str(uuid4().hex)}
 
-        if id == "hash":
+        elif id == "hash":
             # create an id by hashing the string representation of the experiment
             # if hash is negative, we add a zero to the left
             for idx, exp in enumerate(experiments):
@@ -417,15 +433,20 @@ def experiment_planner(
                 _hash = str(_hash) if _hash > 0 else "0" + str(abs(_hash))
                 experiments[idx] = exp | {"id": _hash}
 
-        if id == "index":
+        elif id == "index":
             # use the index of the experiment in the list as an id
             for idx, exp in enumerate(experiments):
                 experiments[idx] = exp | {"id": str(idx)}
 
-        if id == "seed":
+        elif id == "seed":
             # use the seed as an id
             for idx, exp in enumerate(experiments):
                 experiments[idx] = exp | {"id": str(exp["seed"])}
+
+        elif isinstance(id, str):
+            # use the id as a key in the experiment dictionary
+            for idx, exp in enumerate(experiments):
+                experiments[idx] = exp | {"id": id + "_" + str(idx)}
 
     if randomize:
         # randomize the order of the experiments
@@ -599,12 +620,6 @@ def save_dataframe(df, folder="output", filename="aggregated.parquet"):
         df.to_csv(os.path.join(folder, filename))
     elif file_extension == ".json":
         df.to_json(os.path.join(folder, filename))
-    elif file_extension == ".feather":
-        df.to_feather(os.path.join(folder, filename))
-    elif file_extension == ".hdf":
-        df.to_hdf(os.path.join(folder, filename))
-    elif file_extension == ".pkl":
-        df.to_pickle(os.path.join(folder, filename))
     else:
         # warn user if the file extension is not one of the supported types
         print(f"Warning: {file_extension} is not a supported file type.")
@@ -627,12 +642,6 @@ def load_dataframe(file_path):
         new_df = pd.read_parquet(file_path)
     elif file.endswith(".csv"):
         new_df = pd.read_csv(file_path)
-    elif file.endswith(".pkl"):
-        new_df = pd.read_pickle(file_path)
-    elif file.endswith(".hdf"):
-        new_df = pd.read_hdf(file_path)
-    elif file.endswith(".feather"):
-        new_df = pd.read_feather(file_path)
     else:
         raise ValueError(f"Unsupported file type: {file_path}")
         # warn the user if the file is not one of the supported types
@@ -675,9 +684,6 @@ def aggregate_with_pandas(input_obj, save=False, delete_old=False, folder="outpu
     if not os.path.isdir(folder):
         raise ValueError("The folder argument must be a directory.")
 
-    if isinstance(input_obj, list):
-        df = pd.DataFrame(input_obj)
-
     elif isinstance(input_obj, str):
         if not os.path.isdir(input_obj):
             input_obj = os.path.join(os.getcwd(), input_obj)
@@ -689,9 +695,36 @@ def aggregate_with_pandas(input_obj, save=False, delete_old=False, folder="outpu
         raise ValueError("The input_obj argument must be a list of dictionaries or a folder.")
 
     # assume is a folder
-    print("Aggregating data | read_parquet...")
-    df = dd.read_parquet(input_obj)
-    print("Aggregating data | compute...")
+    print("Aggregating data | determining extension of files...")
+    # assume all files in the folder are of the same type, use the first file to determine the extension
+    # get 1 file from the folder
+    try:
+        file = next(file_generator(input_obj))
+        file_extension = os.path.splitext(file)[1]
+        print(f"Aggregating data | file extension: {file_extension}")
+    except StopIteration:
+        raise ValueError(f"The input_obj folder: {input_obj} is empty or does not contain any standard files.")
+    
+    # check if the file extension is one of the supported types
+    if file_extension not in [".json", ".parquet", ".csv"]:
+        raise ValueError(f"Unsupported file type: {file_extension}. Supported types are: .json, .parquet, .csv")
+    
+    elif file_extension in [".json", ".csv"]:
+        # json and csv do not accept a folder as input
+        # if input_obj is a folder, add the wildcard
+        if os.path.isdir(input_obj):
+            input_obj = os.path.join(input_obj, f"*{file_extension}")
+
+    print("Aggregating data | reading files...")
+    # read all files in the folder
+    if file_extension == ".json":
+        df = dd.read_json(input_obj, lines=True)
+    elif file_extension == ".csv":
+        df = dd.read_csv(input_obj)
+    elif file_extension == ".parquet":
+        df = dd.read_parquet(input_obj, index=False, engine='pyarrow')
+
+    # print("Aggregating data | compute...")
     df = df.compute()
 
     print("Aggregating data | post-processing...")
@@ -709,6 +742,39 @@ def aggregate_with_pandas(input_obj, save=False, delete_old=False, folder="outpu
     pbar.unregister()
 
     return df
+
+def prune_old_experiments(experiments, output_folder, filter_by="id", starts_with="results", filename=None):
+    import pandas as pd
+    from tqdm import tqdm
+    import os
+
+    if not os.path.isdir(output_folder):
+        output_folder = os.path.join(os.getcwd(), output_folder)
+    if not os.path.isdir(output_folder):
+        raise ValueError("The folder argument must be a directory.")
+
+    # Step 1: load the existing experiment parameters
+    if isinstance(experiments, list):
+        exp_params = experiments
+    elif isinstance(experiments, str):
+        with open(experiments, 'r') as f:
+            exp_params = json.load(f)
+
+    # Step 2: Get list of existing files
+    existing_files = os.listdir(output_folder)
+
+    # Step 3: Extract IDs from filenames
+    existing_ids = set([file.split('_')[1].split('.')[0] for file in existing_files if file.startswith(starts_with)])
+
+    # Step 4: Filter exp_parameters
+    filtered_exp_params = [_dict for _dict in tqdm(exp_params) if _dict['id'] not in existing_ids]
+
+    # Step 5: Save filtered output
+    if filename is not None:
+        with open(filename, 'w') as f:
+            json.dump(filtered_exp_params, f)
+    else:
+        return filtered_exp_params
 
 def main():
     from time import ctime
@@ -730,6 +796,7 @@ def main():
     # actions
     parser.add_argument('-c', '--create', action='store_true', help='Create experiments')
     parser.add_argument('-r', '--run', action='store_true', help='Run experiments')
+    parser.add_argument('-p', '--prune', action='store_true', help='Prune old experiments')
     parser.add_argument('-a', '--aggregate', action='store_true', help='Aggregate results')
     parser.add_argument('-s', '--split', action='store_true', help='Split the input file into multiple files for parallel processing')
 
@@ -740,8 +807,8 @@ def main():
     args = parser.parse_args()
 
     # Can only run one mode at a time
-    count_true = args.create + args.run + args.aggregate + args.split + args.test
-    if count_true > 1:
+    count_true = args.create + args.run + args.prune + args.aggregate + args.split + args.test
+    if count_true != 1:
         print("Error: Only one mode can be selected. Use -c, -r or -p.")
         parser.print_help()
         sys.exit()
@@ -750,6 +817,7 @@ def main():
         # If no mode is selected, default to test
         args.create = False
         args.run = False
+        args.prune = False
         args.aggregate = False
         args.split = False
         args.test = True
@@ -778,6 +846,18 @@ def main():
 
         # run the model for all experiments
         results = run_full_factorial_p(experiments)
+
+    if args.prune:
+        now = ctime()
+        print(f"{now} || Prunning experiments specified in {args.input} and already present in {args.output}...")
+
+        # prune old experiments
+        if args.cleaned is None:
+            filename = os.path.splitext(args.input)[0] + "_cleaned.json"
+        else:
+            filename = args.cleaned
+
+        prune_old_experiments(experiments=args.input, output_folder=args.output, filename=filename)
 
     if args.aggregate:
         # aggregate results
@@ -833,14 +913,26 @@ def main():
         now = ctime()
         print(f"{now} || Running test with default parameters...")
 
-        # Define default test parameters
         test_params = {
-            'seed': 16558947,
-            'steps': int(5e4),
-            'data_interval': 500,
-            'burn_in': int(3e4),
+            # Integration parameters
+            'seed': 49111200,
+            'steps': int(1e4),
+            'data_interval': 100,
+            'burn_in': 1000,
+            'visualize': False,
+            # demographic parameters
+            'birth_rate': 1.1,  # birth rate
+            'death_rate': 0.1,  # death rate
+            'comp_rate': 0.002,  # competition rate between roaming organisms
+            'n_org': 500,  # initial number of organisms
+            'centers': 'random',  # initial centers of the organisms are randomly distributed
+            # Movement parameters
             'mover_class': OU_Mover,
-            'default': True
+            'noise': 1e-1, # average Home Range crossing time
+            'hr_stdev': 1e-2,  # Home Range standard deviation
+            # Dispersal and competition
+            'dispersal': "gamma_1_0.1",  # dispersal function
+            'comp_kernel': 1e-2,  # competition kernel
         }
 
         # Run the experiment

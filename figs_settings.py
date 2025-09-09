@@ -31,7 +31,9 @@ _dica = {
     'font.sans-serif': ['CMU Sans Serif', 'DejaVu Sans', 'Arial', 'sans-serif'],
     'font.serif': ['CMU Serif', 'DejaVu Serif', 'Times New Roman', 'serif'],
     'text.usetex': False, 
-    
+    # TeX preamble for LaTeX rendering
+    'text.latex.preamble': r'\usepackage{amsmath}\usepackage{amssymb}\usepackage[detect-all]{siunitx}\usepackage{bm}\usepackage{geometry}',
+
     # Line properties
     'lines.linewidth': 1.5,          # thicker lines for better visibility after scaling
     'lines.markersize': 6,
@@ -82,6 +84,8 @@ _dicb = {
     # ticks label color
     'xtick.labelcolor': '[0,0,0,1.]',
     'ytick.labelcolor': '[0,0,0,1.]',
+    # ticks zorder
+    'axes.axisbelow': False,
 }
 
 plt.rcParams.update(_dica | _dicb)
@@ -122,10 +126,10 @@ def magnitude_format(x, pos=None):
         else:
             return f"$10^{{{exponent:g}}}$"
 
-def my_savefig(fig, name):
-    fig.savefig(f"{name}.png", dpi=600)
+def my_savefig(fig, name, **kwargs):
+    fig.savefig(f"{name}.png", dpi=600, **kwargs)
+    # fig.savefig(f"{name}.svg", **kwargs)
     plt.close();
-    # fig.savefig(f"{name}.eps")
-    # fig.savefig(f"../figs/{name}_small.png", dpi=150)
-    # fig.savefig(f"../figs/{name}.pdf")
-    # fig.savefig(f"../figs/{name}.svg")
+    # fig.savefig(f"{name}.eps", **kwargs)
+    # fig.savefig(f"../figs/{name}_small.png", dpi=150, **kwargs)
+    # fig.savefig(f"../figs/{name}.pdf", **kwargs)

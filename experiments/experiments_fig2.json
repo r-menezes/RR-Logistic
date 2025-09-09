@@ -6,17 +6,18 @@
         "dispersal": [1.0e-03, 1.0e-02, 1.0e-01],
         "comp_kernel": [1.0e-02],
         "env_size": [1.0],
-        "birth_rate": [1.1],
+        "birth_rate": [1.5],
         "death_rate": [0.1],
         "comp_rate": [0.002],
-        "steps": [45000],
-        "burn_in_steps": [20000],
-        "data_interval": [500],
-        "max_abundance": [10000],
+        "steps": [1000000],
+        "burn_in_steps": [100000],
+        "data_interval": [10000],
+        "max_abundance": [22000],
         "processes_list": [["repr", "death", "compet"]],
         "mover_class": ["OU", "BM", "SS"],
         "save_temporal_data": [true],
-        "save_positions": [false]
+        "save_positions": [true],
+        "output_format": ["parquet"]
     },
     "filtering_parameter": "mover_class",
     "filters": {
@@ -25,10 +26,10 @@
         "SS": ["dispersal"],
         "RD": []
     },
-    "common_parameters": ["n_org", "comp_kernel", "env_size", "birth_rate", "death_rate", "comp_rate", "steps", "burn_in_steps", "data_interval", "processes_list", "save_temporal_data", "save_positions", "max_abundance"],
+    "common_parameters": ["n_org", "comp_kernel", "env_size", "birth_rate", "death_rate", "comp_rate", "steps", "burn_in_steps", "data_interval", "processes_list", "save_temporal_data", "save_positions", "max_abundance", "output_format"],
     "generate_seeds": true,
-    "n_reps": 50,
+    "n_reps": 20,
     "id": "seed",
-    "seed": 314159,
-    "filename": "exp_parameters.json"
+    "seed": 1458963277,
+    "filename": "exp_fig2.json"
 }

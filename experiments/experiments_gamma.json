@@ -1,0 +1,34 @@
+{
+    "parameter_levels": {
+        "tau": [],
+        "noise": [1.0],
+        "hr_stdev": [1.000000e-03, 1.467799e-03, 2.154435e-03, 3.162278e-03, 4.641589e-03, 6.812921e-03, 1.000000e-02, 1.467799e-02, 2.154435e-02, 3.162278e-02, 4.641589e-02, 6.812921e-02, 1.000000e-01, 1.467799e-01, 2.154435e-01, 3.162278e-01, 4.641589e-01, 6.812921e-01, 1.000000e+00],
+        "dispersal": ["gamma_1_1.0e-02", "gamma_2_1.0e-02", "gamma_4_1.0e-02", "gamma_8_1.0e-02"],
+        "comp_kernel": [1.0e-02],
+        "env_size": [1.0],
+        "birth_rate": [1.5],
+        "death_rate": [0.1],
+        "comp_rate": [0.002],
+        "steps": [1000000],
+        "burn_in_steps": [0],
+        "data_interval": [5000],
+        "max_abundance": [50000],
+        "processes_list": [["repr", "death", "compet"]],
+        "mover_class": ["OU"],
+        "save_temporal_data": [true],
+        "save_positions": [false]
+    },
+    "filtering_parameter": "mover_class",
+    "filters": {
+        "OU": ["noise", "hr_stdev", "dispersal"],
+        "BM": ["noise", "dispersal"],
+        "SS": ["dispersal"],
+        "RD": []
+    },
+    "common_parameters": ["n_org", "comp_kernel", "env_size", "birth_rate", "death_rate", "comp_rate", "steps", "burn_in_steps", "data_interval", "processes_list", "save_temporal_data", "save_positions", "max_abundance"],
+    "generate_seeds": true,
+    "n_reps": 50,
+    "id": "seed",
+    "seed": 314159,
+    "filename": "exp_parameters.json"
+}

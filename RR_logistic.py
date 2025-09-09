@@ -4,6 +4,7 @@
 @license: MIT License
 """
 
+import os
 from uuid import uuid4
 from hashlib import sha256
 import numpy as np
@@ -256,10 +257,9 @@ class Habitat:
     id: int | str = "hash"
     # Data
     extra_data: dict = field(default_factory=dict)
-    return_temporal_data: bool = False
-    return_positions: bool = False
     save_temporal_data: bool = True
     save_positions: bool = False
+    save_aggregates: bool = True
     save_output: bool = False
     output_format: str = "json"
     extra_data_on_exit: dict = field(default_factory=dict)
@@ -453,7 +453,7 @@ class Habitat:
                     data_interval = max(self.n_org, 20)
                     last_stored_data = self.steps
 
-                if self.save_temporal_data:
+                if self.save_temporal_data or self.save_aggregates:
                     self.store_data()
 
                 # reset counts of number of events
@@ -504,7 +504,7 @@ class Habitat:
 
             # record data
             if self.steps % self.data_interval == 0:
-                if self.save_temporal_data:
+                if self.save_temporal_data or self.save_aggregates:
                     self.store_data()
 
                 # reset counts of number of events
@@ -770,7 +770,7 @@ class Habitat:
         elif cause == "max_abundance":
             ave_n_org = self.n_org
         else:
-            ave_n_org = self.aggregates['N_org'] / self.n_measurements
+            ave_n_org = self.aggregates['N_org'] / self.n_measurements if self.n_measurements > 0 else -1
 
         # RESULT DICT
         results = {
@@ -792,14 +792,15 @@ class Habitat:
 
         # AVERAGES
         # each data point in self.data is assumed to be independent
-        averages = {}
-        for key in self.aggregates.keys():
-            if self.n_measurements > 0:
-                averages['ave_' + key] = self.aggregates[key] / self.n_measurements
-            else:
-                averages['ave_' + key] = -1
+        if self.save_aggregates:
+            averages = {}
+            for key in self.aggregates.keys():
+                if self.n_measurements > 0:
+                    averages['ave_' + key] = self.aggregates[key] / self.n_measurements
+                else:
+                    averages['ave_' + key] = -1
 
-        results = results | averages
+            results = results | averages
 
         # FINAL VALUES
         # returns also the last stored value of each variable
@@ -871,25 +872,52 @@ class Habitat:
 
         # create folders
         for folder in folders:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
+            try:
+                if not os.path.exists(folder):
+                    os.makedirs(folder)
+            except:
+                pass
 
 
     def store_data(self):
-        self.aggregates['N_org'] += self.n_org
-        self.aggregates['repr'] += self.n_events_dic['repr']
-        self.aggregates['death'] += self.n_events_dic['death']
-        self.aggregates['compet'] += self.n_events_dic['compet']
-        
+
+        delta_aggregates = {
+            'N_org': self.n_org,
+            'repr': self.n_events_dic['repr'],
+            'death': self.n_events_dic['death'],
+            'compet': self.n_events_dic['compet'],
+        }
+
         if self.has_extra_data:
             for key, fun in self.extra_data.items():
-                self.aggregates[key] += fun(self)
+                delta_aggregates[key] = fun(self)
+
+        # Update aggregates
+        if self.save_aggregates:
+            for key, value in delta_aggregates.items():
+                if key not in self.aggregates:
+                    self.aggregates[key] = 0
+                self.aggregates[key] += value
         
         self.n_measurements += 1
         
         # Reset event counters
         for proc in self.processes_list:
             self.n_events_dic[proc] = 0
+
+        # Add other essential information to the aggregates
+        delta_aggregates['t'] = self.t
+        delta_aggregates['steps'] = self.steps
+        delta_aggregates['id'] = self.id
+
+        # Store data in a pandas DataFrame
+        if not hasattr(self, 'data'):
+            self.data = pd.DataFrame()
+        # Append the current aggregates to the data DataFrame
+        self.data = pd.concat(
+            [self.data, pd.DataFrame(delta_aggregates, index=[self.n_measurements-1])],
+            ignore_index=True
+        )
 
 # >>>>> EXTRA DATA <<<<<<<
 
@@ -1025,8 +1053,38 @@ def org_pos_crowding(habitat):
 
 # >>>>>>> KERNELS <<<<<<<<
 
+def gamma_dispersal(pos : np.ndarray,  habitat : Habitat, shape : float = 2.0, stdev : float = 0.1) -> np.ndarray:
+    """This implements the gamma dispersal function for the roaming organisms.
+
+    It assumes a dispersal distance that follows a gamma distribution.
+    The dispersal direction is sampled uniformly from the unit circle.
+
+    Args:
+        pos (np.ndarray): the current position of the organism. A (1, 2) array.
+        habitat (Habitat): the Habitat object.
+        shape (float, optional): the shape parameter of the gamma distribution. Defaults to 2.0.
+        stdev (float, optional): the standard deviation of the dispersal. Defaults to 0.1.
+
+    Returns:
+        np.ndarray: the position of the new HR center in the habitat
+    """
+    # sample new position and normalize it to the environment size
+    n_new_positions = pos.shape[0] if pos.ndim > 1 else 1
+    # sample distances from the gamma distribution
+    dists = habitat.rng.gamma(shape=shape, scale=stdev, size=n_new_positions)
+    angles = habitat.rng.uniform(low=0, high=2*np.pi, size=n_new_positions)
+    # calculate new positions
+    new_pos = pos + np.column_stack((dists * np.cos(angles), dists * np.sin(angles)))
+    # reduce the number of dimensions if necessary
+    if n_new_positions == 1:
+        new_pos = new_pos[0]
+    
+    new_pos = habitat.periodic_boundary_conditions(new_pos)
+
+    return new_pos
+
 def gaussian_dispersal(pos : np.ndarray,  habitat : Habitat, stdev : float = 0.1) -> np.ndarray:
-    """This is the dispersal function for the roaming organisms.
+    """This implements the Gaussian dispersal function for the roaming organisms.
 
     Args:
         pos (np.ndarray): the current position of the organism. A (1, 2) array.
