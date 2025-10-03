@@ -12,7 +12,7 @@
 - Rafael Menezes (maintainer) $^{1,2,3}$
     - github: [r-menezes](https://github.com/r-menezes)
     - email: r.menezes at ictp-saifr dot org 
-- Justin M. Calabrese $^{1,4,5}$
+- Justin M. Calabrese $^{2,4,5}$
 - William F. Fagan $^{5}$
 - Paulo Inácio Prado $^{3}$
 - Ricardo Martinez-Garcia $^{2,1}$
