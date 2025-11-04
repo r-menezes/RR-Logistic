@@ -141,7 +141,13 @@ The documentation for the `experiment_planner` is available in the source code. 
 }
 ```
 
-The experiment files used to generate the data in the paper (`experiments_fig2.json`, `experiments_figs34.json`) are provided.
+The experiment files used to generate the data in the paper are available in the `experiment/` directory. A brief description of each file is provided below:
+
+| File | Description | Figures using the data | # replicas | # simulations |
+|-------|-------------|-----------------------|---------------|----------------|
+| `...fig2.json` | Changing `hr_stdev` from $0.001$ to $1.0$ (19 levels) for three levels of `dispersal` ($0.001$, $0.01$, $0.1$) | Figure 2 and Supplementary Figure C.1 | 20 | 1260 |
+| `...figs34.json` | Exploring the combinations of `hr_stdev` (from $0.001$ to $1.0$, 49 levels), `tau` (from $10^{-6}$ to $1.0$, 49 levels), `dispersal` ($0.001$, $0.01$, $0.1$), and `comp_kernel` ($0.001$, $0.01$, $0.1$) with a full factorial experiment design. | Figures 3 and 4, Supplementary Figures C.2 and C.5 | 20 | 432180 |
+| `...gamma.json` | Changing `hr_stdev` from $0.001$ to $1.0$ (19 levels) for four levels of `dispersal`. Dispersal kernel was set to a gamma distribution with scale parameter $0.01$ and varying shape parameter ($1$, $2$, $4$, $8$)| Supplementary Figure C.3 | 50 | 3800 |
 
 ###  Generate Simulation Parameter Files:
 
@@ -159,7 +165,10 @@ Execute the simulations using the generated parameter files. Run the `run_experi
 ```bash
 python run_experiments.py -r -i exp_parameters.json
 ```
-*Note: Although individual simulations are usually computationally inexpensive, running a large number of them might require significant computational resources. The script is designed to run simulations in parallel, utilizing all available CPU cores by default. Using HPC facilities for the simulations is recommended.*
+> [!WARNING]  
+> Tests on an AMD Ryzen 9 3900X show that each simulation step takes 714 microseconds (single core). Thus, a simulation with $10^6$ steps would take approximately 12 minutes on a single core. The 1260 simulations required to generate the data for Figure 2 took 9h to complete when run in parallel using all 24 cores. The simulations required to generate the data for Figures 3 and 4 are estimated to take around 3570 CPU days if run sequentially. Therefore, it is highly recommended to run the simulations in parallel on a high-performance computing cluster.
+> 
+> Users should adjust the number of steps and repetitions in the `experiments.json` file according to their computational resources and desired accuracy.
 
 ### Aggregate Results:
 
